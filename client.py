@@ -1,37 +1,73 @@
-#
-# Hello World client in Python
 # Connects REQ socket to tcp://localhost:5555
-# Sends "Hello" to server, expects "World" back
-#
-
 import zmq
+from Crypto.Cipher import AES
+from Crypto.Hash import HMAC
+from Crypto.Hash import SHA
+from Crypto.Util import Counter
+from Crypto import Random
+import sys
 
+# Reads a file per line
 def readFile(path):
-  messages = []
+  lineArr = []
   
   with open(path) as file:
     for line in file:
-      messages.append(line)
+      lineArr.append(line)
 
-  return messages
+  return lineArr
 
+# MAIN FUNCTION
 if __name__== "__main__":
-  context = zmq.Context()
+  # Read messages text file
   filepath = "./messages.txt"
-
-  # Read nessages text file
   messages = readFile(filepath)
 
-  # Socket to talk to server
-  print("Connecting to hello world server\n")
+  # Initialize cipher related variables
+  key = b'Sixteen byte key'
+  nonce = Random.new().read(AES.block_size)
+  nonce = int.from_bytes(nonce, byteorder=sys.byteorder)
+  counter = 1
+  initialEncMsg = ''
+
+  # Initialize socket to talk to the server
+  context = zmq.Context()
+  print("Connecting to server\n")
   socket = context.socket(zmq.REQ)
   socket.connect("tcp://localhost:5555")
 
   # Send each message to the server
   for message in messages:
     print("Sending message: " + message)
-    socket.send(message)
 
-    # Get the reply
-    reply = socket.recv()
-    print("Recieved reply: " + reply + "\n")
+    # TODO compress message here
+    # TODO init encrpyted msg to NULL then throw if still null before sending msg
+    encryptedMsg = ''
+
+    # Create new counter block
+    ctrBlock = Counter.new(128, initial_value=nonce ^ counter) # 16 bytes = 128 bits; XOR nonce with counter
+
+    # Create new block cipher
+    cipher = AES.new(key, AES.MODE_CTR, counter=ctrBlock)
+    ciphertext = cipher.encrypt(message)
+
+    if(counter == 1):
+      encryptedMsg = HMAC.new(key, ciphertext).digest()
+      initialEncMsg = encryptedMsg
+    else:
+      encryptedMsg = HMAC.new(key, initialEncMsg + ciphertext).digest()
+
+    counter += 1
+
+    # Hash old key using SHA1
+    newKey = SHA.new(key).hexdigest()
+
+    # Truncate extra 16 bytes
+    newKey = list(bytearray(newKey.encode()))
+    del newKey[16:]
+
+    # Set current key as the new key
+    key = bytes(newKey)
+
+    # Send the message
+    socket.send(encryptedMsg)

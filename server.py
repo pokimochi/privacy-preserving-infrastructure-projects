@@ -1,11 +1,6 @@
-#
-#   Hello World server in Python
-#   Binds REP socket to tcp://*:5555
-#   Expects b"Hello" from client, replies with b"World"
-#
-
-import time
+# Binds REP socket to tcp://*:5555
 import zmq
+import time
 
 if __name__== "__main__":
   context = zmq.Context()
@@ -17,7 +12,6 @@ if __name__== "__main__":
     message = socket.recv()
     print("Received message: %s" % message)
 
-    #  Do some 'work'
     time.sleep(1)
 
     #  Send reply back to client
