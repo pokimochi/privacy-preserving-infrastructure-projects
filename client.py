@@ -23,9 +23,9 @@ if __name__== "__main__":
   filepath = "./messages.txt"
   messages = readFile(filepath)
 
-  # Initialize cipher related variables
-  key = b'Sixteen byte key'
-  nonce = Random.new().read(AES.block_size)
+  # TODO ask for input instead of hardcoded
+  key = b'Sixteen byte key' # This is actually 16 bytes
+  nonce = Random.new().read(AES.block_size) # 16 byte IV
   nonce = int.from_bytes(nonce, byteorder=sys.byteorder)
   counter = 1
   initialEncMsg = ''
@@ -40,8 +40,6 @@ if __name__== "__main__":
   for message in messages:
     print("Sending message: " + message)
 
-    # TODO compress message here
-    # TODO init encrpyted msg to NULL then throw if still null before sending msg
     encryptedMsg = ''
 
     # Create new counter block
@@ -71,3 +69,7 @@ if __name__== "__main__":
 
     # Send the message
     socket.send(encryptedMsg)
+    
+    #  Get the reply from server
+    response = socket.recv().decode()
+    print("Received reply: " + response)

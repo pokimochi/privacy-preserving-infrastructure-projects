@@ -12,7 +12,7 @@ if __name__== "__main__":
     message = socket.recv()
     print("Received message: %s" % message)
 
-    time.sleep(1)
+    time.sleep(0.5)
 
     #  Send reply back to client
     socket.send(b"Message successfully recieved")
