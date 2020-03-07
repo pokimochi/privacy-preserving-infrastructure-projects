@@ -8,11 +8,13 @@ if __name__== "__main__":
   socket.bind("tcp://*:5555")
 
   while True:
-    #  Wait for next request from client
-    message = socket.recv()
-    print("Received message: %s" % message)
+    # Wait for ciphertext
+    message = socket.recv_json()
+    print("Recieved message: %s" % message)
 
+    # Verify Aggregate MAC
+    # Decrypt Ciphertext if Calculated Aggregate MAC == Recieved Aggregate MAC
     time.sleep(0.5)
 
-    #  Send reply back to client
-    socket.send(b"Message successfully recieved")
+     #  Send reply back to client
+    socket.send(b"Message recieved!")

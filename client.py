@@ -23,12 +23,12 @@ if __name__== "__main__":
   filepath = "./messages.txt"
   messages = readFile(filepath)
 
-  # TODO ask for input instead of hardcoded
+  # TODO ask for input instead of key and IV being hardcoded
   key = b'Sixteen byte key' # This is actually 16 bytes
   nonce = Random.new().read(AES.block_size) # 16 byte IV
   nonce = int.from_bytes(nonce, byteorder=sys.byteorder)
   counter = 1
-  initialEncMsg = ''
+  prevAggregateMAC = ''
 
   # Initialize socket to talk to the server
   context = zmq.Context()
@@ -40,22 +40,20 @@ if __name__== "__main__":
   for message in messages:
     print("Sending message: " + message)
 
-    encryptedMsg = ''
-
     # Create new counter block
     ctrBlock = Counter.new(128, initial_value=nonce ^ counter) # 16 bytes = 128 bits; XOR nonce with counter
 
     # Create new block cipher
-    cipher = AES.new(key, AES.MODE_CTR, counter=ctrBlock)
-    ciphertext = cipher.encrypt(message)
+    ciphertext = AES.new(key, AES.MODE_CTR, counter=ctrBlock).encrypt(message)
 
-    if(counter == 1):
-      encryptedMsg = HMAC.new(key, ciphertext).digest()
-      initialEncMsg = encryptedMsg
-    else:
-      encryptedMsg = HMAC.new(key, initialEncMsg + ciphertext).digest()
+    # Generate MAC
+    mac = HMAC.new(key, ciphertext).digest()
+
+    # Create Aggregate MAC
+    aggregateMac = SHA.new(mac).digest() if(counter == 1) else SHA.new(prevAggregateMAC + mac).digest()
 
     counter += 1
+    prevAggregateMAC = aggregateMac
 
     # Hash old key using SHA1
     newKey = SHA.new(key).hexdigest()
@@ -64,12 +62,12 @@ if __name__== "__main__":
     newKey = list(bytearray(newKey.encode()))
     del newKey[16:]
 
-    # Set current key as the new key
+    # Set new key as the current key
     key = bytes(newKey)
 
-    # Send the message
-    socket.send(encryptedMsg)
-    
-    #  Get the reply from server
+    # Send json to server
+    socket.send_json({"message": ciphertext.decode('ISO-8859-1'), "auth": aggregateMac.decode('ISO-8859-1')})
+
+    # Make sure message was recieved before sending next message
     response = socket.recv().decode()
     print("Received reply: " + response)
