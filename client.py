@@ -5,7 +5,6 @@ from Crypto.Hash import HMAC
 from Crypto.Hash import SHA
 from Crypto.Util import Counter
 from Crypto import Random
-import sys
 
 # Reads a file per line
 def readFile(path):
@@ -25,10 +24,10 @@ if __name__== "__main__":
 
   # TODO ask for input instead of key and IV being hardcoded
   key = b'Sixteen byte key' # This is actually 16 bytes
-  nonce = Random.new().read(AES.block_size) # 16 byte IV
-  nonce = int.from_bytes(nonce, byteorder=sys.byteorder)
+  nonce = b'1111111111111111'
+  nonce = int.from_bytes(nonce, byteorder='big')
   counter = 1
-  prevAggregateMAC = ''
+  prevAggregateMAC = b''
 
   # Initialize socket to talk to the server
   context = zmq.Context()
@@ -50,9 +49,10 @@ if __name__== "__main__":
     mac = HMAC.new(key, ciphertext).digest()
 
     # Create Aggregate MAC
-    aggregateMac = SHA.new(mac).digest() if(counter == 1) else SHA.new(prevAggregateMAC + mac).digest()
+    aggregateMac = SHA.new(prevAggregateMAC + mac).digest()
 
     counter += 1
+    del prevAggregateMAC
     prevAggregateMAC = aggregateMac
 
     # Hash old key using SHA1
@@ -63,11 +63,17 @@ if __name__== "__main__":
     del newKey[16:]
 
     # Set new key as the current key
+    del key
     key = bytes(newKey)
 
     # Send json to server
     socket.send_json({"message": ciphertext.decode('ISO-8859-1'), "auth": aggregateMac.decode('ISO-8859-1')})
 
+    # Cleanup 
+    del mac
+    del newKey
+
     # Make sure message was recieved before sending next message
+    print('Waiting for response...')
     response = socket.recv().decode()
-    print("Received reply: " + response)
+    print("Received response: " + response + '\n')
