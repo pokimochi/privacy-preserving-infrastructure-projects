@@ -19,6 +19,7 @@ if __name__== "__main__":
   prevAggregateMAC = b''
 
   while True:
+    file1 = open("Result.txt", "a")
     # Wait for ciphertext
     print('Waiting for message...')
     data = socket.recv_json()
@@ -57,11 +58,13 @@ if __name__== "__main__":
       del mac
       del newKey
 
-      print('Message recieved: %s' % plaintext)
+      #print('Message recieved: %s' % plaintext)
+      print('Message recieved: ' + str(plaintext, 'utf-8'))
+      file1.write(str(plaintext, 'utf-8'))
     else:
       print('Message is invalid...')
 
     print('\n')
-
+    file1.close()
     #  Send reply back to client
     socket.send(b"Message recieved!")
